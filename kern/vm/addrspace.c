@@ -57,12 +57,12 @@ as_create(void)
 	if (as == NULL) {
 		return NULL;
 	}
-
+	as->regions = NULL;
+	
+	return as;
 	/*
 	 * Initialize as needed.
 	 */
-
-	return as;
 }
 
 int
@@ -97,7 +97,8 @@ as_destroy(struct addrspace *as)
 
 void
 as_activate(void)
-{
+{	
+	int i, spl;
 	struct addrspace *as;
 
 	as = proc_getas();
@@ -108,6 +109,11 @@ as_activate(void)
 		 */
 		return;
 	}
+	spl = splhigh();
+	for(i=0; i<NUM_TLB; i++){
+		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+	}
+	splx(spl);
 
 	/*
 	 * Write this.
@@ -137,18 +143,28 @@ as_deactivate(void)
 int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 		 int readable, int writeable, int executable)
-{
-	/*
-	 * Write this.
-	 */
-
-	(void)as;
-	(void)vaddr;
-	(void)memsize;
-	(void)readable;
-	(void)writeable;
-	(void)executable;
-	return ENOSYS; /* Unimplemented */
+{	
+	//align the region
+	//base first
+	memsize += vaddr & ~(vaddr_t)PAGE_FRAME;
+	vaddr &= PAGE_FRAME;
+	//length
+	memsize = (memsize+PAGE_SIZE) & PAGE_FRAME;
+	
+	size_t numpages = memsize/PAGE_SIZE;
+	
+	struct region * curr = as->regions; 
+	if(curr == NULL){
+		struct region * new = append_region();
+	return 0;
+	}
+	
+	while(curr->next !=NULL){
+		curr = curr->next;
+	}
+	return 0;
+	
+	
 }
 
 int
@@ -157,7 +173,7 @@ as_prepare_load(struct addrspace *as)
 	/*
 	 * Write this.
 	 */
-
+	
 	(void)as;
 	return 0;
 }
