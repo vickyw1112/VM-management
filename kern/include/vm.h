@@ -30,12 +30,19 @@
 #ifndef _VM_H_
 #define _VM_H_
 
-/*
- * VM system-related definitions.
- *
- * You'll probably want to add stuff here.
- */
 
+struct outer_entry{
+    struct inner_entry **inner_table; 
+    struct outer_entry *next;  // next level of page_entry
+};
+ 
+struct inner_entry{
+    uint32_t entrylo;
+    uint32_t fn;
+    char permissions:
+}
+struct outer_entry **page_table;
+int table_size;
 
 #include <machine/vm.h>
 

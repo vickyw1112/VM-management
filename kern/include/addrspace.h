@@ -47,6 +47,14 @@ struct vnode;
  *
  * You write this.
  */
+struct region {
+        int cur_perms;         
+        int old_perms;          
+        vaddr_t start;           
+        size_t size;                
+        struct region *next;        
+};
+
 
 struct addrspace {
 #if OPT_DUMBVM
@@ -58,9 +66,11 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 #else
-        /* Put stuff here for your VM system */
+
 #endif
+
 };
+
 
 /*
  * Functions in addrspace.c:
@@ -127,6 +137,7 @@ int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
  */
 
 int load_elf(struct vnode *v, vaddr_t *entrypoint);
-
+int append_region(struct region );
+void remove_region();
 
 #endif /* _ADDRSPACE_H_ */
