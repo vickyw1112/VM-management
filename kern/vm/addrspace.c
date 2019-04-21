@@ -47,6 +47,8 @@
  * part of the VM subsystem.
  *
  */
+static int
+append_region(struct addrspace *as, int permissions, vaddr_t start, size_t size);
 
 struct addrspace *
 as_create(void)
@@ -58,9 +60,7 @@ as_create(void)
 		return NULL;
 	}
 
-	/*
-	 * Initialize as needed.
-	 */
+	as->regions = NULL;
 
 	return as;
 }
@@ -188,3 +188,33 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	return 0;
 }
 
+static int
+append_region(struct addrspace *as, int permissions, vaddr_t size, size_t start){
+	struct region *next = NULL;
+	struct region *temp = NULL;
+	struct region *cur = NULL;
+
+	next = kmalloc(sizeof(*next));
+	if(!next){
+		return EFAULT;
+	}
+
+	next->ori_perms = permissions;
+	next->size = size;
+	next->start = start;
+	next->next = NULL;
+
+	cur = as->regions;
+	temp = cur;
+    if(cur) {
+        while(cur && cur->start < next->start){
+			temp = cur;
+			cur = cur->next;	
+        }
+        temp->next = next;
+		next->next = cur;
+    }else {
+        as->regions = next;
+    }
+	return 0;
+}

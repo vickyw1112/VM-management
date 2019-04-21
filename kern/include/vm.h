@@ -31,20 +31,15 @@
 #define _VM_H_
 
 
-struct outer_entry{
-    struct inner_entry **inner_table; 
-    struct outer_entry *next;  // next level of page_entry
-};
- 
-struct inner_entry{
-    uint32_t entrylo;
-    uint32_t fn;
-    char permissions:
-}
-struct outer_entry **page_table;
-int table_size;
-
 #include <machine/vm.h>
+ 
+struct entry{
+    uint32_t entrylo;
+    char permissions;
+}
+struct entry **page_table; 
+
+#define TABLE_SIZE 1024 
 
 /* Fault-type arguments to vm_fault() */
 #define VM_FAULT_READ        0    /* A read was attempted */

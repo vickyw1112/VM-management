@@ -48,11 +48,11 @@ struct vnode;
  * You write this.
  */
 struct region {
-        int cur_perms;         
-        int old_perms;          
-        vaddr_t start;           
+        char cur_perms;  // current permissions       
+        char ori_perms;  // regional permissions
         size_t size;                
-        struct region *next;        
+        vaddr_t start;   // vbase
+        struct region *next;  // next region   
 };
 
 
@@ -137,7 +137,5 @@ int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
  */
 
 int load_elf(struct vnode *v, vaddr_t *entrypoint);
-int append_region(struct region );
-void remove_region();
 
 #endif /* _ADDRSPACE_H_ */

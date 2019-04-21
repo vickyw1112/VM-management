@@ -15,7 +15,7 @@ void vm_bootstrap(void)
     */
 
     /* init the page table */
-    for(i = 0; i < table_size; i++) {
+    for(i = 0; i < TABLE_SIZE; i++) {
         page_table[i] = NULL;
     }
 }
