@@ -14,10 +14,6 @@ void vm_bootstrap(void)
        frame table here as well.
     */
 
-    /* init the page table */
-    for(i = 0; i < TABLE_SIZE; i++) {
-        page_table[i] = NULL;
-    }
 }
 
 int

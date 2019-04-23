@@ -68,6 +68,8 @@ struct addrspace {
 
 #else
         struct region *regions;
+        struct entry *page_table[TABLE_SIZE]; 
+
 #endif
 };
 

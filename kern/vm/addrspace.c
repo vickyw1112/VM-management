@@ -60,8 +60,7 @@ as_create(void)
 		return NULL;
 	}
 
-	as->regions = NULL;
-
+	bzero(as, sizeof(*as));
 	return as;
 }
 
@@ -102,7 +101,7 @@ as_activate(void)
 	struct addrspace *as;
 
 	as = proc_getas();
-	if (as == NULL) {
+	if(as == NULL) {
 		return;
 	}
 
@@ -125,11 +124,7 @@ as_deactivate(void)
 	 * be needed.
 	 */
 
-	struct addrspace *as;
-	as = proc_getas();
-	if(as == NULL){
-		return;
-	}
+	/* nothing */
 }
 
 /*
@@ -146,17 +141,15 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 		 int readable, int writeable, int executable)
 {
-	/*
-	 * Write this.
-	 */
+	char pers = (char)readable | (char)writeable | (char)executable;
 
-	(void)as;
-	(void)vaddr;
-	(void)memsize;
-	(void)readable;
-	(void)writeable;
-	(void)executable;
-	return ENOSYS; /* Unimplemented */
+	int err = append_region(as, pers, vaddr, size);
+
+	if(err != 0){
+		return err;
+	}
+
+	return 0;
 }
 
 int
@@ -197,32 +190,41 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 }
 
 static int
-append_region(struct addrspace *as, int permissions, vaddr_t size, size_t start){
-	struct region *next = NULL;
-	struct region *temp = NULL;
+append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size){
+	struct region *new = NULL;
+	struct region *prev = NULL;
 	struct region *cur = NULL;
 
-	next = kmalloc(sizeof(*next));
-	if(!next){
+	new = kmalloc(sizeof(*new));
+	if(!new){
 		return EFAULT;
 	}
 
-	next->ori_perms = permissions;
-	next->size = size;
-	next->start = start;
-	next->next = NULL;
+	new->ori_perms = permissions;
+	new->size = size;
+	new->start = start;
+	new->next = NULL;
 
 	cur = as->regions;
-	temp = cur;
-    if(cur) {
-        while(cur && cur->start < next->start){
-			temp = cur;
-			cur = cur->next;	
-        }
-        temp->next = next;
-		next->next = cur;
-    }else {
-        as->regions = next;
-    }
+	prev = cur;
+    if(cur == NULL) {
+        as->regions = new;
+		return 0
+	}
+
+	while(cur && (cur->start + cur->size <= new->start)){
+		prev = cur;
+		cur = cur->next;	
+	}
+	/* 
+	 * prev->new->cur
+	 * we need to check whether new's start is less than or equal to prev + size
+	 * new's end is less than or equal to prev + size
+ 
+	*/
+	if(cur != NULL && (new->start + new->size > cur->start))
+		return -1;	
+	prev->next = new;
+	new->next = cur;
 	return 0;
 }

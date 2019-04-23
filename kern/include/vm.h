@@ -37,7 +37,6 @@ struct entry{
     uint32_t entrylo;
     char permissions;
 }
-struct entry **page_table; 
 
 #define TABLE_SIZE 1024 
 
