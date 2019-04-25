@@ -41,7 +41,14 @@ struct inner_entry{
     uint32_t fn;
     char permissions:
 };
-struct outer_entry **page_table;
+struct page_table **page_table{
+	uint32_t entryHi;
+	uint32_t entryLo;
+	struct addrspace* as;
+	int next
+};
+typedef struct page_table* pt_ptr;
+pt_ptr pt;
 int table_size;
 
 #include <machine/vm.h>
