@@ -40,7 +40,7 @@ struct inner_entry{
     uint32_t entrylo;
     uint32_t fn;
     char permissions:
-}
+};
 struct outer_entry **page_table;
 int table_size;
 
