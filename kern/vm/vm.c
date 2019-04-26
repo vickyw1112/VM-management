@@ -23,6 +23,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	char perms;
     struct addrspace *as;
 	struct entry *pe = NULL;
+	uint32_t entrylo, entryhi = faultaddress & TLBHI_VPAGE;
 	if(faultaddress == 0x0 || faultaddress >= 0x80000000)
 		return EFAULT;
     
@@ -31,24 +32,38 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	if(as == NULL){
 		return EFAULT;
 	}
-	pe = pt_search(as, faultaddress);
 
 	if(faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE){
 
+		pe = pt_search(as, faultaddress);
 		if(!pe){
+			// check whether faultaddress is in a region
+			perms = region_perm_search(as, faultaddress);
+			if(perms == -1)
+				return EFAULT;
+			
+			// alloc new frame
 			uint32_t newframe = alloc_kpages(1);
-			newframe =newframe >> 12;
-
-			if(newframe == 0){
+			if(newframe == 0x0){
 				return EFAULT; // tlb out of entries - cannot handle
 			}
-			region_perm_search(as, faultaddress, &perms);
 
-			pt_insert(as, KVADDR_TO_PADDR(newframe), perms);
+			entrylo = newframe;
+			pe = pt_insert(as, KVADDR_TO_PADDR(newframe), faultaddress, perms);
+		}else{
+			entrylo = pe->entrylo;
+		}
 
-			
-			tlb_random(newframe, KVADDR_TO_PADDR(newframe));
-		}		
+
+		if(pe->permissions & WRITE){
+			entrylo |= TLBLO_DIRTY;
+		}else{
+			entrylo |= as->isLoading ? TLBLO_DIRTY : 0;
+		}
+        entrylo |= TLBLO_VALID; /* set valid bit */ 
+		tlb_random(entryhi, entrylo);
+
+		return 0;
 	} 
 	
 	return EFAULT;

@@ -51,6 +51,8 @@ struct vnode;
 #define WRITE		(1 << 1)	/* Segment is writable */
 #define READ    	(1 << 2)	/* Segment is readable */
 
+
+
 #define USERSTACK_SIZE 16 * PAGE_SIZE
 #define TABLE_SIZE 1024 
 
@@ -142,9 +144,9 @@ int               as_prepare_load(struct addrspace *as);
 int               as_complete_load(struct addrspace *as);
 int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
-int pt_insert(struct addrspace *as, paddr_t lo, char perms);
-struct entry * pt_search(struct addrspace *as, vaddr_t addr);
-void region_perm_search(struct addrspace *as, vaddr_t addr, char *p);
+struct entry *pt_insert(struct addrspace *as, uint32_t lo, vaddr_t addr, char perms);
+struct entry *pt_search(struct addrspace *as, vaddr_t addr);
+char region_perm_search(struct addrspace *as, vaddr_t addr);
 
 /*
  * Functions in loadelf.c

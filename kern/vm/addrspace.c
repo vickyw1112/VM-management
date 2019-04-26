@@ -307,7 +307,7 @@ struct entry * pt_search(struct addrspace *as, vaddr_t addr)
 	if(as->page_table[out]){
 		pe = as->page_table[out];
 		if(pe[in].entrylo != 0x0){
-			return pe;
+			return pe + in;
 		}
 		pe = NULL;
 	}
@@ -334,10 +334,10 @@ static int create_pt_entry(struct addrspace *as, int index){
 	return 0;
 }
 
-int pt_insert(struct addrspace *as, paddr_t lo, char perms)
+struct entry *pt_insert(struct addrspace *as, uint32_t lo, vaddr_t addr, char perms)
 {
-	uint32_t first_index = lo >> 22; 
-	uint32_t sec_index = (lo << 10) >> 22;
+	uint32_t first_index = addr >> 22; 
+	uint32_t sec_index = (addr << 10) >> 22;
 	int err = 0;
 	if(!as->page_table[first_index]){
 		err = create_pt_entry(as, first_index);
@@ -348,17 +348,19 @@ int pt_insert(struct addrspace *as, paddr_t lo, char perms)
 	pe[sec_index].permissions = perms;
 	
 	if(err){
-		return err;
+		return NULL;
 	}
-	return 0;
+	return pe + sec_index;
 }
 
-void region_perm_search(struct addrspace *as, vaddr_t addr, char *p){
+char region_perm_search(struct addrspace *as, vaddr_t addr){
 	struct region *cur = as->regions;
 	while(cur){
 		if(cur->start <= addr && (cur->start + cur->size) > addr){
-			*p = cur->cur_perms;
+			return cur->cur_perms;
 		}
+		else if()
 		cur = cur->next;
 	}
+	return -1;
 }
