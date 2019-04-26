@@ -359,7 +359,6 @@ char region_perm_search(struct addrspace *as, vaddr_t addr){
 		if(cur->start <= addr && (cur->start + cur->size) > addr){
 			return cur->cur_perms;
 		}
-		else if()
 		cur = cur->next;
 	}
 	return -1;

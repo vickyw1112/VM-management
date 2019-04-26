@@ -48,11 +48,9 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 				return EFAULT; // tlb out of entries - cannot handle
 			}
 
-			entrylo = newframe;
 			pe = pt_insert(as, KVADDR_TO_PADDR(newframe), faultaddress, perms);
-		}else{
-			entrylo = pe->entrylo;
 		}
+		entrylo = pe->entrylo;
 
 
 		if(pe->permissions & WRITE){
@@ -60,7 +58,8 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 		}else{
 			entrylo |= as->isLoading ? TLBLO_DIRTY : 0;
 		}
-        entrylo |= TLBLO_VALID; /* set valid bit */ 
+
+        entrylo |= pe->permissions ? TLBLO_VALID : 0; /* set valid bit */ 
 		tlb_random(entryhi, entrylo);
 
 		return 0;
