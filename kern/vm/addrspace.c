@@ -47,7 +47,7 @@
  * part of the VM subsystem.
  *
  */
-
+static int append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size);
 struct addrspace *
 as_create(void)
 {
@@ -148,27 +148,19 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 		 int readable, int writeable, int executable)
 {	
-	//align the region
-	//base first
-	memsize += vaddr & ~(vaddr_t)PAGE_FRAME;
-	vaddr &= PAGE_FRAME;
-	//length
-	memsize = (memsize+PAGE_SIZE) & PAGE_FRAME;
-	
-	size_t numpages = memsize/PAGE_SIZE;
-	
-	struct region * curr = as->regions; 
-	if(curr == NULL){
-		struct region * new = append_region();
-	return 0;
+
+	char r, w, e;
+	r = readable ? READ : 0;
+	w = writeable ? WRITE : 0;
+	e = executable ? EXE : 0;
+	char p = r | w | e;
+	int err = append_region(as, p, vaddr, memsize);
+
+	if(err){
+		return err;
 	}
-	
-	while(curr->next !=NULL){
-		curr = curr->next;
-	}
+
 	return 0;
-	
-	
 }
 
 int
@@ -205,6 +197,45 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK;
 
+	return 0;
+}
+
+static int
+append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size){
+	struct region *new = NULL;
+	struct region *prev = NULL;
+	struct region *cur = NULL;
+
+	new = kmalloc(sizeof(*new));
+	if(!new){
+		return EFAULT;
+	}
+
+	new->cur_perms = permissions;
+	new->size = size;
+	new->start = start;
+	new->next = NULL;
+
+	cur = as->regions;
+	prev = cur;
+    if(cur == NULL) {
+        as->regions = new;
+		return 0;
+	}
+
+	while(cur && (cur->start + cur->size <= new->start)){
+		prev = cur;
+		cur = cur->next;	
+	}
+	/* 
+	 * prev->new->cur
+	 * we need to check whether new's start is less than or equal to prev + size
+	 * new's end is less than or equal to prev + size
+	*/
+	if(cur != NULL && (new->start + new->size > cur->start))
+		return EADDRINUSE;	
+	prev->next = new;
+	new->next = cur;
 	return 0;
 }
 

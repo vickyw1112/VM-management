@@ -38,15 +38,15 @@ struct outer_entry{
  
 struct inner_entry{
     uint32_t entrylo;
-    uint32_t fn;
-    char permissions:
+    uint32_t entryhi;
+    char permissions;
 };
-struct page_table **page_table{
-	uint32_t entryHi;
-	uint32_t entryLo;
+struct page_table{
+	uint32_t entrylo;
+    uint32_t entryhi;
 	struct addrspace* as;
-	int next
 };
+struct page_table *pt;
 typedef struct page_table* pt_ptr;
 pt_ptr pt;
 int table_size;

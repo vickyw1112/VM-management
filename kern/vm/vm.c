@@ -85,15 +85,13 @@ vm_fault(int faulttype, vaddr_t faultaddress)
         curr = curr->next;
     }
 
-    // if not in address space region
     if (notfound)
         return EFAULT;
-    lock_acquire(lock); need a lock code region
+    lock_acquire(lock); //need a lock code region
 	// calculate have privillage
     dirtybit = (dirtybit & 2) ? TLBLO_DIRTY:0;
     dirtybit |= TLBLO_VALID;
-
-    // if in hpt
+	
     faultaddress |= as->asid;
     while (1) {
         if (page_table[hi].entryHI == faultaddress && page_table[hi].entryLO != 0) {
@@ -113,9 +111,9 @@ vm_fault(int faulttype, vaddr_t faultaddress)
     newframe = newframe<<12;
     if (newframe==0) {
 
-        //lock_release(lock);
+        lock_release(lock);
 
-        kprintf("Ran out of TLB entries - cannot handle page fault\n");
+        //kprintf("Ran out of TLB entries - cannot handle page fault\n");
 
         return EFAULT;
     }
@@ -138,6 +136,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 *
 * SMP-specific functions.  Unused in our configuration.
 */
+
 
 void
 vm_tlbshootdown(const struct tlbshootdown *ts)

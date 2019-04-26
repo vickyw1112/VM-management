@@ -47,6 +47,10 @@ struct vnode;
  *
  * You write this.
  */
+#define EXE		(1 << 0)	/* Segment is executable */
+#define WRITE		(1 << 1)	/* Segment is writable */
+#define READ    	(1 << 2)	/* Segment is readable */
+
 struct region {
         int cur_perms;         
         int old_perms;          
@@ -137,7 +141,6 @@ int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
  */
 
 int load_elf(struct vnode *v, vaddr_t *entrypoint);
-int append_region(struct region );
 void remove_region();
 
 #endif /* _ADDRSPACE_H_ */
