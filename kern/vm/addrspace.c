@@ -47,8 +47,17 @@
  * part of the VM subsystem.
  *
  */
+
 static int
-append_region(struct addrspace *as, int permissions, vaddr_t start, size_t size);
+append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size);
+
+// destroy pt
+static void pt_destroy(struct addrspace *as);
+
+// dup pt
+static void pt_dup(struct addrspace *new, struct addrspace *old);
+
+static int create_pt_entry(struct addrspace *as, int index);
 
 struct addrspace *
 as_create(void)
@@ -73,13 +82,8 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	if (newas==NULL) {
 		return ENOMEM;
 	}
-
-	/*
-	 * Write this.
-	 */
-
+	pt_dup(newas, old);
 	(void)old;
-
 	*ret = newas;
 	return 0;
 }
@@ -87,10 +91,17 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 void
 as_destroy(struct addrspace *as)
 {
-	/*
-	 * Clean up as needed.
-	 */
-
+	if(as == NULL)
+		return;
+	
+	struct region *cur = as->regions;
+	struct region *temp = NULL;
+	while(cur){
+		temp = cur->next;
+		kfree(cur);
+		cur = temp;
+	}
+	pt_destroy(as);
 	kfree(as);
 }
 
@@ -124,7 +135,22 @@ as_deactivate(void)
 	 * be needed.
 	 */
 
-	/* nothing */
+	int i, spl;
+	struct addrspace *as;
+
+	as = proc_getas();
+	if(as == NULL) {
+		return;
+	}
+
+	/* Disable interrupts on this CPU while frobbing the TLB. */
+	spl = splhigh();
+
+	for(i=0; i<NUM_TLB; i++) {
+		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+	}
+
+	splx(spl);
 }
 
 /*
@@ -141,11 +167,14 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 		 int readable, int writeable, int executable)
 {
-	char pers = (char)readable | (char)writeable | (char)executable;
+	char r, w, e;
+	r = readable ? READ : 0;
+	w = writeable ? WRITE : 0;
+	e = executable ? EXE : 0;
+	char p = r | w | e;
+	int err = append_region(as, p, vaddr, memsize);
 
-	int err = append_region(as, pers, vaddr, size);
-
-	if(err != 0){
+	if(err){
 		return err;
 	}
 
@@ -155,34 +184,51 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 int
 as_prepare_load(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
+	if(as == NULL)
+		return EFAULT;
 
-	(void)as;
+	/*
+	struct region *cur = as->regions;
+    while(cur) {
+		cur->cur_perms |= WRITE;
+		cur = cur->next;
+    }
+	*/
+	as->isLoading = true;
+	as_activate();
 	return 0;
 }
 
 int
 as_complete_load(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
+	if(as == NULL)
+		return EFAULT;
 
-	(void)as;
+	/*
+	struct region *cur = as->regions;
+    while(cur) {
+		cur->cur_perms = cur->ori_perms;
+		cur = cur->next;
+    }
+	*/
+	as->isLoading = false;
+	as_activate();
 	return 0;
 }
 
 int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
-	/*
-	 * Write this.
-	 */
+	if(as == NULL)
+		return EFAULT;
 
-	(void)as;
+	int err = as_define_region(as, USERSTACK - USERSTACK_SIZE, 
+			USERSTACK_SIZE, READ, WRITE, 0);
 
+	if(err)
+		return err;
+	
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK;
 
@@ -200,7 +246,7 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 		return EFAULT;
 	}
 
-	new->ori_perms = permissions;
+	new->cur_perms = permissions;
 	new->size = size;
 	new->start = start;
 	new->next = NULL;
@@ -209,7 +255,7 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 	prev = cur;
     if(cur == NULL) {
         as->regions = new;
-		return 0
+		return 0;
 	}
 
 	while(cur && (cur->start + cur->size <= new->start)){
@@ -220,11 +266,69 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 	 * prev->new->cur
 	 * we need to check whether new's start is less than or equal to prev + size
 	 * new's end is less than or equal to prev + size
- 
 	*/
 	if(cur != NULL && (new->start + new->size > cur->start))
-		return -1;	
+		return EADDRINUSE;	
 	prev->next = new;
 	new->next = cur;
+	return 0;
+}
+
+/*
+* destroy pagetable
+*/
+static void pt_destroy(struct addrspace *as)
+{
+	struct entry *entry;
+	
+	for(int i = 0; i < TABLE_SIZE; i++){
+		entry = as->page_table[i];
+
+		if(entry){
+			for(int j = 0; j < TABLE_SIZE; j++){
+				if(entry[j].entrylo != 0x0){
+					free_kpages(PADDR_TO_KVADDR(entry[j].entrylo));
+				}
+			}
+			kfree(entry);
+		}
+
+		as->page_table[i] = NULL;
+	}
+}
+
+
+struct entry * pt_search(struct addrspace *as, vaddr_t addr)
+{
+	uint32_t out = addr >> 22;
+	uint32_t in = addr << 10;
+	in = in >> 22;
+	struct entry *pe = NULL;
+	if(as->page_table[out]){
+		pe = as->page_table[out];
+		if(pe[in].entrylo != 0x0){
+			return pe;
+		}
+		pe = NULL;
+	}
+	return pe;
+}
+
+/* 
+* dup pagetable
+*/
+static void pt_dup(struct addrspace *new, struct addrspace *old)
+{
+(void)new;
+
+(void)old;
+
+}
+
+static int create_pt_entry(struct addrspace *as, int index){
+	struct entry *new = kmalloc(sizeof(*new) * TABLE_SIZE);
+	if(!new)
+		return EFAULT;
+	as->page_table[index] = new;
 	return 0;
 }

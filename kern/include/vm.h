@@ -32,13 +32,8 @@
 
 
 #include <machine/vm.h>
- 
-struct entry{
-    uint32_t entrylo;
-    char permissions;
-}
 
-#define TABLE_SIZE 1024 
+
 
 /* Fault-type arguments to vm_fault() */
 #define VM_FAULT_READ        0    /* A read was attempted */
@@ -57,7 +52,7 @@ vaddr_t alloc_kpages(unsigned npages);
 void free_kpages(vaddr_t addr);
 
 /* TLB shootdown handling called from interprocessor_interrupt */
-void vm_tlbshootdown(const struct tlbshootdown *);
+void vm_tlbshootdown(const struct tlbshootdown *); 
 
 
 #endif /* _VM_H_ */

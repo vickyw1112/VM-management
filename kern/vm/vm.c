@@ -10,22 +10,37 @@
 
 void vm_bootstrap(void)
 {
-    /* Initialise VM sub-system.  You probably want to initialise your 
-       frame table here as well.
-    */
+	/* Initialise VM sub-system.  You probably want to initialise your 
+	   frame table here as well.
+	*/
 
 }
 
 int
 vm_fault(int faulttype, vaddr_t faultaddress)
 {
-    (void) faulttype;
-    (void) faultaddress;
+	int spl, perms, region;
+    struct addrspace *as;
+	if(faultaddress == 0x0 || faultaddress >= 0x80000000)
+		return EFAULT;
+    
+	as = proc_getas();
+	struct entry *pe = pt_search(as, faultaddress);
 
-    panic("vm_fault hasn't been written yet\n");
+	switch (faulttype) {
+        case VM_FAULT_READ:
+   	    case VM_FAULT_WRITE:
 
-    return EFAULT;
+		   break;
+        case VM_FAULT_READONLY:
+
+			break;
+	return EFAULT;
 }
+
+
+
+
 
 /*
  *

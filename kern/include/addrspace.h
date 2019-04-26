@@ -47,9 +47,20 @@ struct vnode;
  *
  * You write this.
  */
+#define EXE		(1 << 0)	/* Segment is executable */
+#define WRITE		(1 << 1)	/* Segment is writable */
+#define READ    	(1 << 2)	/* Segment is readable */
+
+#define USERSTACK_SIZE 16 * PAGE_SIZE
+#define TABLE_SIZE 1024 
+
+struct entry{
+    uint32_t entrylo;
+    char permissions;
+};
+
 struct region {
         char cur_perms;  // current permissions       
-        char ori_perms;  // regional permissions
         size_t size;                
         vaddr_t start;   // vbase
         struct region *next;  // next region   
@@ -69,6 +80,7 @@ struct addrspace {
 #else
         struct region *regions;
         struct entry *page_table[TABLE_SIZE]; 
+        bool isLoading;
 
 #endif
 };
@@ -130,6 +142,8 @@ int               as_prepare_load(struct addrspace *as);
 int               as_complete_load(struct addrspace *as);
 int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
+struct entry * pt_insert(struct addrspace *as, vaddr_t vaddr, vaddr_t next);
+struct entry * pt_search(struct addrspace *as, vaddr_t addr);
 
 /*
  * Functions in loadelf.c

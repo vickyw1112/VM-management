@@ -94,7 +94,6 @@ kvaddr_to_paddr(vaddr_t vaddr){
  * grows downwards.
  */
 #define USERSTACK     USERSPACETOP
-
 /*
  * Interface to the low-level module that looks after the amount of
  * physical memory we have.
