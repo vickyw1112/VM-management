@@ -32,30 +32,26 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 		return EFAULT;
 	}
 	pe = pt_search(as, faultaddress);
-	switch (faulttype) {
-        case VM_FAULT_READ:
-   	    case VM_FAULT_WRITE:
-			if(!pe){
-				uint32_t newframe = alloc_kpages(1);
-				newframe =newframe >> 12;
 
-				if(newframe == 0){
-					return EFAULT; // tlb out of entries - cannot handle
-				}
-				region_perm_search(as, faultaddress, &perms);
+	if(faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE){
 
-				pt_insert(as, KVADDR_TO_PADDR(newframe), perms);
+		if(!pe){
+			uint32_t newframe = alloc_kpages(1);
+			newframe =newframe >> 12;
 
-				tlb_random(newframe, KVADDR_TO_PADDR(newframe));
-			}		
-			break;
-		case VM_FAULT_READONLY:
+			if(newframe == 0){
+				return EFAULT; // tlb out of entries - cannot handle
+			}
+			region_perm_search(as, faultaddress, &perms);
 
-			break;
-		}
-	as_activate();
-	return 0;
+			pt_insert(as, KVADDR_TO_PADDR(newframe), perms);
+
+			
+			tlb_random(newframe, KVADDR_TO_PADDR(newframe));
+		}		
+	} 
 	
+	return EFAULT;
 }
 	
 
