@@ -329,6 +329,36 @@ static int create_pt_entry(struct addrspace *as, int index){
 	struct entry *new = kmalloc(sizeof(*new) * TABLE_SIZE);
 	if(!new)
 		return EFAULT;
+	bzero(new, TABLE_SIZE);
 	as->page_table[index] = new;
 	return 0;
+}
+
+int pt_insert(struct addrspace *as, paddr_t lo, char perms)
+{
+	uint32_t first_index = lo >> 22; 
+	uint32_t sec_index = (lo << 10) >> 22;
+	int err = 0;
+	if(!as->page_table[first_index]){
+		err = create_pt_entry(as, first_index);
+	}
+	
+	struct entry *pe = as->page_table[first_index];
+	pe[sec_index].entrylo = lo;
+	pe[sec_index].permissions = perms;
+	
+	if(err){
+		return err;
+	}
+	return 0;
+}
+
+void region_perm_search(struct addrspace *as, vaddr_t addr, char *p){
+	struct region *cur = as->regions;
+	while(cur){
+		if(cur->start <= addr && (cur->start + cur->size) > addr){
+			*p = cur->cur_perms;
+		}
+		cur = cur->next;
+	}
 }

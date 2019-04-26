@@ -142,8 +142,9 @@ int               as_prepare_load(struct addrspace *as);
 int               as_complete_load(struct addrspace *as);
 int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
-struct entry * pt_insert(struct addrspace *as, vaddr_t vaddr, vaddr_t next);
+int pt_insert(struct addrspace *as, paddr_t lo, char perms);
 struct entry * pt_search(struct addrspace *as, vaddr_t addr);
+void region_perm_search(struct addrspace *as, vaddr_t addr, char *p);
 
 /*
  * Functions in loadelf.c
