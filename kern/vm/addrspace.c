@@ -55,7 +55,7 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 static void pt_destroy(struct addrspace *as);
 
 // dup pt
-static void pt_dup(struct addrspace *new, struct addrspace *old);
+static int pt_dup(struct addrspace *new, struct addrspace *old);
 
 static int create_pt_entry(struct addrspace *as, int index);
 
@@ -77,13 +77,24 @@ int
 as_copy(struct addrspace *old, struct addrspace **ret)
 {
 	struct addrspace *newas;
-
+    int err;
 	newas = as_create();
 	if (newas==NULL) {
 		return ENOMEM;
 	}
-	pt_dup(newas, old);
-	(void)old;
+    
+    struct region *cur = old->regions;
+    while(cur){
+        err = append_region(newas, cur->cur_perms, cur->start, cur->size); 
+        if(err)
+            return err;
+        cur = cur->next;
+    }
+    
+    newas->isLoading = old->isLoading;
+	err = pt_dup(newas, old);
+    if(err)
+        return err;
 	*ret = newas;
 	return 0;
 }
@@ -317,12 +328,28 @@ struct entry * pt_search(struct addrspace *as, vaddr_t addr)
 /* 
 * dup pagetable
 */
-static void pt_dup(struct addrspace *new, struct addrspace *old)
+static int pt_dup(struct addrspace *new, struct addrspace *old)
 {
-(void)new;
-
-(void)old;
-
+    struct entry *oe, *ne;
+    uint32_t newframe;
+    for(int i = 0; i < TABLE_SIZE; i++){
+        oe = old->page_table[i];
+        for(int j = 0; j < TABLE_SIZE; j++){
+            
+            if(oe[j].entrylo != 0x0){
+                // alloc new frame
+                newframe = alloc_kpages(1);
+                if(newframe == 0x0)
+                    return EFAULT;
+                // copy page entry
+                ne = pt_insert(new, KVADDR_TO_PADDR(newframe), 
+                        oe[j].entrylo, oe[j].permissions);
+                if(!ne)
+                    return EFAULT;
+            }
+        }
+    }
+    return 0;
 }
 
 static int create_pt_entry(struct addrspace *as, int index){
