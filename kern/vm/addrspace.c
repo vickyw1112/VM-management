@@ -178,6 +178,7 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 		 int readable, int writeable, int executable)
 {
+	// npages = sz / PAGE_SIZE;
 	char r, w, e;
 	r = readable ? READ : 0;
 	w = writeable ? WRITE : 0;
@@ -251,6 +252,13 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 	struct region *new = NULL;
 	struct region *prev = NULL;
 	struct region *cur = NULL;
+
+	/* Align the region. First, the base... */
+	size += start & ~(vaddr_t)PAGE_FRAME;
+	start &= PAGE_FRAME;
+
+	/* ...and now the length. */
+	size = (size + PAGE_SIZE - 1) & PAGE_FRAME;
 
 	new = kmalloc(sizeof(*new));
 	if(!new){
@@ -330,22 +338,23 @@ struct entry * pt_search(struct addrspace *as, vaddr_t addr)
 */
 static int pt_dup(struct addrspace *new, struct addrspace *old)
 {
-    struct entry *oe, *ne;
+    struct entry *oe;
     uint32_t newframe;
     for(int i = 0; i < TABLE_SIZE; i++){
         oe = old->page_table[i];
+		if(!new->page_table[i]){
+			new->page_table[i] = kmalloc(sizeof(struct entry) * TABLE_SIZE);
+			bzero(new->page_table[i], TABLE_SIZE);
+		}
         for(int j = 0; j < TABLE_SIZE; j++){
-            
-            if(oe[j].entrylo != 0x0){
+            if(oe && oe[j].entrylo != 0x0){
                 // alloc new frame
                 newframe = alloc_kpages(1);
                 if(newframe == 0x0)
                     return EFAULT;
                 // copy page entry
-                ne = pt_insert(new, KVADDR_TO_PADDR(newframe), 
-                        oe[j].entrylo, oe[j].permissions);
-                if(!ne)
-                    return EFAULT;
+                new->page_table[i][j].permissions = oe[j].permissions;
+				new->page_table[i][j].entrylo = oe[j].entrylo;
             }
         }
     }

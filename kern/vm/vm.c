@@ -2,6 +2,7 @@
 #include <kern/errno.h>
 #include <lib.h>
 #include <thread.h>
+#include <spl.h>
 #include <addrspace.h>
 #include <vm.h>
 #include <machine/tlb.h>
@@ -21,6 +22,7 @@ int
 vm_fault(int faulttype, vaddr_t faultaddress)
 {
 	char perms;
+	int spl;
     struct addrspace *as;
 	struct entry *pe = NULL;
 	uint32_t entrylo, entryhi = faultaddress & TLBHI_VPAGE;
@@ -60,8 +62,10 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 		}
 
         entrylo |= pe->permissions ? TLBLO_VALID : 0; /* set valid bit */ 
-		tlb_random(entryhi, entrylo);
 
+		spl = splhigh();
+		tlb_random(entryhi, entrylo);
+		splx(spl);
 		return 0;
 	} 
 	
