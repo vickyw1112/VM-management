@@ -52,7 +52,7 @@ static int
 append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size);
 
 // destroy pt
-static void pt_destroy(struct addrspace *as);
+//static void pt_destroy(struct addrspace *as);
 
 // dup pt
 static int pt_dup(struct addrspace *new, struct addrspace *old);
@@ -78,6 +78,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 {
 	struct addrspace *newas;
     int err;
+    int spl;
 	newas = as_create();
 	if (newas==NULL) {
 		return ENOMEM;
@@ -90,21 +91,22 @@ as_copy(struct addrspace *old, struct addrspace **ret)
             return err;
         cur = cur->next;
     }
-    
+    spl = splhigh();
     newas->isLoading = old->isLoading;
 	err = pt_dup(newas, old);
     if(err)
         return err;
 	*ret = newas;
+	splx(spl);
 	return 0;
 }
 
 void
 as_destroy(struct addrspace *as)
-{
+{	
+	/*
 	if(as == NULL)
 		return;
-	
 	struct region *cur = as->regions;
 	struct region *temp = NULL;
 	while(cur){
@@ -112,7 +114,9 @@ as_destroy(struct addrspace *as)
 		kfree(cur);
 		cur = temp;
 	}
+	
 	pt_destroy(as);
+	*/
 	kfree(as);
 }
 
@@ -295,9 +299,9 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 
 /*
 * destroy pagetable
-*/
+
 static void pt_destroy(struct addrspace *as)
-{
+{	
 	struct entry *entry;
 	
 	for(int i = 0; i < TABLE_SIZE; i++){
@@ -316,7 +320,7 @@ static void pt_destroy(struct addrspace *as)
 	}
 }
 
-
+*/
 struct entry * pt_search(struct addrspace *as, vaddr_t addr)
 {
 	uint32_t out = addr >> 22;
