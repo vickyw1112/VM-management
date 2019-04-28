@@ -338,25 +338,27 @@ struct entry * pt_search(struct addrspace *as, vaddr_t addr)
 */
 static int pt_dup(struct addrspace *new, struct addrspace *old)
 {
-    struct entry *oe;
+    struct entry *oe = NULL, *ne = NULL;
     uint32_t newframe;
     for(int i = 0; i < TABLE_SIZE; i++){
         oe = old->page_table[i];
-		if(!new->page_table[i]){
+		if(oe && !new->page_table[i]){
 			new->page_table[i] = kmalloc(sizeof(struct entry) * TABLE_SIZE);
 			bzero(new->page_table[i], TABLE_SIZE);
 		}
-        for(int j = 0; j < TABLE_SIZE; j++){
-            if(oe && oe[j].entrylo != 0x0){
+		ne = new->page_table[i];
+        for(int j = 0; oe && j < TABLE_SIZE; j++){
+            if(oe[j].entrylo != 0x0){
                 // alloc new frame
                 newframe = alloc_kpages(1);
                 if(newframe == 0x0)
                     return EFAULT;
                 // copy page entry
-                new->page_table[i][j].permissions = oe[j].permissions;
-				new->page_table[i][j].entrylo = oe[j].entrylo;
+                ne[j].permissions = oe[j].permissions;
+				ne[j].entrylo = KVADDR_TO_PADDR(newframe);
             }
         }
+		new->page_table[i] = ne;
     }
     return 0;
 }
