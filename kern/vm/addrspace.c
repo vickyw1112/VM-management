@@ -354,8 +354,9 @@ static int pt_dup(struct addrspace *new, struct addrspace *old)
                 if(newframe == 0x0)
                     return ENOMEM;
                 // copy page entry
+                memmove((void*) newframe, (const void *)PADDR_TO_KVADDR(oe[j].entrylo & PAGE_FRAME), PAGE_SIZE); 
                 ne[j].permissions = oe[j].permissions;
-				ne[j].entrylo = KVADDR_TO_PADDR(newframe);
+				ne[j].entrylo = KVADDR_TO_PADDR(newframe) & PAGE_FRAME;
             }
         }
 		new->page_table[i] = ne;
