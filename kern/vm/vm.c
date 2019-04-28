@@ -32,9 +32,10 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
 	as = proc_getas();
 	if(as == NULL){
-		return EFAULT;
+		return ENOMEM;
 	}
 
+	spl = splhigh();
 	if(faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE){
 
 		pe = pt_search(as, faultaddress);
@@ -47,7 +48,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 			// alloc new frame
 			uint32_t newframe = alloc_kpages(1);
 			if(newframe == 0x0){
-				return EFAULT; // tlb out of entries - cannot handle
+				return ENOMEM; // tlb out of entries - cannot handle
 			}
 
 			pe = pt_insert(as, KVADDR_TO_PADDR(newframe), faultaddress, perms);
@@ -63,13 +64,14 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
         entrylo |= pe->permissions ? TLBLO_VALID : 0; /* set valid bit */ 
 
-		spl = splhigh();
 		tlb_random(entryhi, entrylo);
 		splx(spl);
 		return 0;
 	} 
-	
-	return EFAULT;
+	else if(faultaddress == VM_FAULT_READONLY){
+		return EPERM;
+	}	
+	return EINVAL;
 }
 	
 

@@ -197,7 +197,7 @@ int
 as_prepare_load(struct addrspace *as)
 {
 	if(as == NULL)
-		return EFAULT;
+		return ENOMEM;
 
 	/*
 	struct region *cur = as->regions;
@@ -215,7 +215,7 @@ int
 as_complete_load(struct addrspace *as)
 {
 	if(as == NULL)
-		return EFAULT;
+		return ENOMEM;
 
 	/*
 	struct region *cur = as->regions;
@@ -233,7 +233,7 @@ int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
 	if(as == NULL)
-		return EFAULT;
+		return ENOMEM;
 
 	int err = as_define_region(as, USERSTACK - USERSTACK_SIZE, 
 			USERSTACK_SIZE, READ, WRITE, 0);
@@ -262,7 +262,7 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 
 	new = kmalloc(sizeof(*new));
 	if(!new){
-		return EFAULT;
+		return ENOMEM;
 	}
 
 	new->cur_perms = permissions;
@@ -352,7 +352,7 @@ static int pt_dup(struct addrspace *new, struct addrspace *old)
                 // alloc new frame
                 newframe = alloc_kpages(1);
                 if(newframe == 0x0)
-                    return EFAULT;
+                    return ENOMEM;
                 // copy page entry
                 ne[j].permissions = oe[j].permissions;
 				ne[j].entrylo = KVADDR_TO_PADDR(newframe);
@@ -366,7 +366,7 @@ static int pt_dup(struct addrspace *new, struct addrspace *old)
 static int create_pt_entry(struct addrspace *as, int index){
 	struct entry *new = kmalloc(sizeof(*new) * TABLE_SIZE);
 	if(!new)
-		return EFAULT;
+		return ENOMEM;
 	bzero(new, TABLE_SIZE);
 	as->page_table[index] = new;
 	return 0;
