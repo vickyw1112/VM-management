@@ -26,9 +26,10 @@ vm_fault(int faulttype, vaddr_t faultaddress)
     struct addrspace *as;
 	struct entry *pe = NULL;
 	uint32_t entrylo, entryhi = faultaddress & TLBHI_VPAGE;
-	if(faultaddress == 0x0 || faultaddress >= 0x80000000)
+	
+	if(faultaddress == 0x0 || faultaddress >= 0x80000000){
 		return EFAULT;
-    
+    }
 
 	as = proc_getas();
 	if(as == NULL){

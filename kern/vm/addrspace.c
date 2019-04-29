@@ -78,9 +78,9 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 {
 	struct addrspace *newas;
     int err;
-    int spl;
+    
 	newas = as_create();
-	if (newas==NULL) {
+	if (newas == NULL) {
 		return ENOMEM;
 	}
     
@@ -91,13 +91,14 @@ as_copy(struct addrspace *old, struct addrspace **ret)
             return err;
         cur = cur->next;
     }
-    spl = splhigh();
+    
     newas->isLoading = old->isLoading;
 	err = pt_dup(newas, old);
-    if(err)
+    if(err){
         return err;
+    }
 	*ret = newas;
-	splx(spl);
+	
 	return 0;
 }
 
@@ -105,8 +106,9 @@ void
 as_destroy(struct addrspace *as)
 {	
 	
-	if(as == NULL)
+	if(as == NULL){
 		return;
+	}
 	struct region *cur = as->regions;
 	struct region *temp = NULL;
 	while(cur){
@@ -132,7 +134,7 @@ as_activate(void)
 	/* Disable interrupts on this CPU while frobbing the TLB. */
 	spl = splhigh();
 
-	for(i=0; i<NUM_TLB; i++) {
+	for(i = 0; i < NUM_TLB; i++ ) {
 		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
 	}
 
@@ -159,7 +161,7 @@ as_deactivate(void)
 	/* Disable interrupts on this CPU while frobbing the TLB. */
 	spl = splhigh();
 
-	for(i=0; i<NUM_TLB; i++) {
+	for(i = 0; i < NUM_TLB; i++) {
 		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
 	}
 
@@ -198,16 +200,9 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 int
 as_prepare_load(struct addrspace *as)
 {
-	if(as == NULL)
+	if(as == NULL){
 		return ENOMEM;
-
-	/*
-	struct region *cur = as->regions;
-    while(cur) {
-		cur->cur_perms |= WRITE;
-		cur = cur->next;
-    }
-	*/
+	}
 	as->isLoading = true;
 	as_activate();
 	return 0;
@@ -216,16 +211,9 @@ as_prepare_load(struct addrspace *as)
 int
 as_complete_load(struct addrspace *as)
 {
-	if(as == NULL)
+	if(as == NULL){
 		return ENOMEM;
-
-	/*
-	struct region *cur = as->regions;
-    while(cur) {
-		cur->cur_perms = cur->ori_perms;
-		cur = cur->next;
-    }
-	*/
+	}
 	as->isLoading = false;
 	as_activate();
 	return 0;
@@ -240,8 +228,9 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	int err = as_define_region(as, USERSTACK - USERSTACK_SIZE, 
 			USERSTACK_SIZE, READ, WRITE, 0);
 
-	if(err)
+	if(err){
 		return err;
+	}
 	
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK;
@@ -254,14 +243,7 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 	struct region *new = NULL;
 	struct region *prev = NULL;
 	struct region *cur = NULL;
-
-	/* Align the region. First, the base... */
-	size += start & ~(vaddr_t)PAGE_FRAME;
-	start &= PAGE_FRAME;
-
-	/* ...and now the length. */
-	size = (size + PAGE_SIZE - 1) & PAGE_FRAME;
-
+	
 	new = kmalloc(sizeof(*new));
 	if(!new){
 		return ENOMEM;
@@ -274,6 +256,7 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 
 	cur = as->regions;
 	prev = cur;
+	
     if(cur == NULL) {
         as->regions = new;
 		return 0;
@@ -325,6 +308,7 @@ struct entry * pt_search(struct addrspace *as, vaddr_t addr)
 	uint32_t in = addr << 10;
 	in = in >> 22;
 	struct entry *pe = NULL;
+	
 	if(as->page_table[out]){
 		pe = as->page_table[out];
 		if(pe[in].entrylo != 0x0){
@@ -342,35 +326,44 @@ static int pt_dup(struct addrspace *new, struct addrspace *old)
 {
     struct entry *oe = NULL, *ne = NULL;
     uint32_t newframe;
+    
     for(int i = 0; i < TABLE_SIZE; i++){
         oe = old->page_table[i];
+		//finding if second level exist, if not alloc space and zero it
 		if(oe && !new->page_table[i]){
 			new->page_table[i] = kmalloc(sizeof(struct entry) * TABLE_SIZE);
 			bzero(new->page_table[i], TABLE_SIZE*sizeof(struct entry));
 		}
+		
+		//copy page entries
 		ne = new->page_table[i];
         for(int j = 0; oe && j < TABLE_SIZE; j++){
             if(oe[j].entrylo != 0x0){
                 // alloc new frame
                 newframe = alloc_kpages(1);
-                if(newframe == 0x0)
+                if(newframe == 0x0){
                     return ENOMEM;
+                }
                 // copy page
                 memmove((void*) newframe, (const void *)PADDR_TO_KVADDR(oe[j].entrylo & PAGE_FRAME), PAGE_SIZE); 
                 ne[j].permissions = oe[j].permissions;
 				ne[j].entrylo = KVADDR_TO_PADDR(newframe) & PAGE_FRAME;
             }
         }
+        //assign return value
 		new->page_table[i] = ne;
     }
     return 0;
 }
 
 static int create_pt_entry(struct addrspace *as, int index){
+
 	struct entry *new = kmalloc(sizeof(*new) * TABLE_SIZE);
-	if(!new)
+	
+	if(!new){
 		return ENOMEM;
-	bzero(new, TABLE_SIZE*sizeof(*new));
+	}
+	bzero(new, TABLE_SIZE * sizeof(*new));
 	as->page_table[index] = new;
 	return 0;
 }
@@ -395,6 +388,7 @@ struct entry *pt_insert(struct addrspace *as, uint32_t lo, vaddr_t addr, char pe
 }
 
 char region_perm_search(struct addrspace *as, vaddr_t addr){
+
 	struct region *cur = as->regions;
 	while(cur){
 		if(cur->start <= addr && (cur->start + cur->size) > addr){
