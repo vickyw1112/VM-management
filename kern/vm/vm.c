@@ -47,6 +47,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 			
 			// alloc new frame
 			uint32_t newframe = alloc_kpages(1);
+			bzero((void *)newframe, PAGE_SIZE);
 			if(newframe == 0x0){
 				return ENOMEM; // tlb out of entries - cannot handle
 			}

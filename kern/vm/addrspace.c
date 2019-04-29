@@ -52,7 +52,7 @@ static int
 append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size);
 
 // destroy pt
-//static void pt_destroy(struct addrspace *as);
+static void pt_destroy(struct addrspace *as);
 
 // dup pt
 static int pt_dup(struct addrspace *new, struct addrspace *old);
@@ -104,7 +104,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 void
 as_destroy(struct addrspace *as)
 {	
-	/*
+	
 	if(as == NULL)
 		return;
 	struct region *cur = as->regions;
@@ -114,9 +114,7 @@ as_destroy(struct addrspace *as)
 		kfree(cur);
 		cur = temp;
 	}
-	
 	pt_destroy(as);
-	*/
 	kfree(as);
 }
 
@@ -299,7 +297,7 @@ append_region(struct addrspace *as, char permissions, vaddr_t start, size_t size
 
 /*
 * destroy pagetable
-
+*/
 static void pt_destroy(struct addrspace *as)
 {	
 	struct entry *entry;
@@ -320,7 +318,7 @@ static void pt_destroy(struct addrspace *as)
 	}
 }
 
-*/
+
 struct entry * pt_search(struct addrspace *as, vaddr_t addr)
 {
 	uint32_t out = addr >> 22;
@@ -348,7 +346,7 @@ static int pt_dup(struct addrspace *new, struct addrspace *old)
         oe = old->page_table[i];
 		if(oe && !new->page_table[i]){
 			new->page_table[i] = kmalloc(sizeof(struct entry) * TABLE_SIZE);
-			bzero(new->page_table[i], TABLE_SIZE);
+			bzero(new->page_table[i], TABLE_SIZE*sizeof(struct entry));
 		}
 		ne = new->page_table[i];
         for(int j = 0; oe && j < TABLE_SIZE; j++){
@@ -357,7 +355,7 @@ static int pt_dup(struct addrspace *new, struct addrspace *old)
                 newframe = alloc_kpages(1);
                 if(newframe == 0x0)
                     return ENOMEM;
-                // copy page entry
+                // copy page
                 memmove((void*) newframe, (const void *)PADDR_TO_KVADDR(oe[j].entrylo & PAGE_FRAME), PAGE_SIZE); 
                 ne[j].permissions = oe[j].permissions;
 				ne[j].entrylo = KVADDR_TO_PADDR(newframe) & PAGE_FRAME;
@@ -372,7 +370,7 @@ static int create_pt_entry(struct addrspace *as, int index){
 	struct entry *new = kmalloc(sizeof(*new) * TABLE_SIZE);
 	if(!new)
 		return ENOMEM;
-	bzero(new, TABLE_SIZE);
+	bzero(new, TABLE_SIZE*sizeof(*new));
 	as->page_table[index] = new;
 	return 0;
 }
